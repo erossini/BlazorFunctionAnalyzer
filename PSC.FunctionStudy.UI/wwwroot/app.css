@@ -429,6 +429,43 @@ body {
 .mark-swatch.extremum { background: var(--extremum); }
 .mark-swatch.inflection { background: var(--inflection); }
 
+/* ---------- footer ---------- */
+
+.site-footer {
+    max-width: 46rem;
+    margin: 4rem auto 0;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+    font-size: .85rem;
+}
+
+.footer-group {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: .3rem 1rem;
+}
+
+.footer-group + .footer-group {
+    margin-top: .55rem;
+}
+
+.footer-label {
+    color: var(--ink-faint);
+}
+
+.site-footer a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
 /* ---------- framework error bar ---------- */
 
 #blazor-error-ui {
