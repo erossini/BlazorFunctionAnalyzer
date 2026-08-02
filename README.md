@@ -1,4 +1,4 @@
-# PSC Function Study
+# Blazor Function Study
 
 A step-by-step **study of a function** for school and university — the kind of exercise where you
 are handed an f(x) and asked to work out its domain, symmetry, intercepts, sign, limits, asymptotes,
