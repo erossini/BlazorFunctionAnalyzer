@@ -1,0 +1,416 @@
+<header class="masthead">
+    <p class="eyebrow">Step-by-step curve sketching</p>
+    <h1>Study a function</h1>
+    <p class="lede">
+        Type a function of <em>x</em>. The app works through the same ten steps you would
+        write out by hand, then draws the curve from what it found &#8212;
+        <a href="@MethodBaseHref">see what each step is looking for</a>.
+    </p>
+</header>
+
+<section class="entry">
+    <label class="entry-label" for="fx">f(x) =</label>
+    <input id="fx" class="entry-input" @bind="_input" @bind:event="oninput"
+           @onkeydown="OnKey" placeholder="(x^2 - 1)/(x - 2)" autocomplete="off" spellcheck="false" />
+    <button class="entry-go" @onclick="Run">Study it</button>
+</section>
+
+<section class="samples">
+    <span class="samples-label">Try:</span>
+    @foreach (var s in Samples)
+    {
+        <button class="chip" @onclick="() => Load(s)">@s</button>
+    }
+</section>
+
+@if (_recent.Count > 0)
+{
+    <section class="samples">
+        <span class="samples-label">Recent:</span>
+        @foreach (var s in _recent)
+        {
+            <button class="chip" @onclick="() => Load(s)">@s</button>
+        }
+    </section>
+}
+
+@if (_error is not null)
+{
+    <p class="error" role="alert">@_error</p>
+}
+
+@if (_report is not null)
+{
+    var r = _report;
+
+    <article class="steps">
+
+        <section class="step">
+            <span class="step-no">01</span>
+            <a class="step-help" href="@MethodHref(1)">What is this step?</a>
+            <h2>The function</h2>
+            <div class="math-line">
+                <span class="math-label">f(x) =</span>
+                @Typeset(r.F)
+            </div>
+            @if (r.Recognition is { } kind)
+            {
+                <p><strong>@kind.Family.</strong> @kind.Explanation</p>
+                @if (kind.IsNamed)
+                {
+                    <p class="known">
+                        <span class="known-tag">Known curve</span>
+                        <strong>@kind.Name</strong> &#8212; @kind.Note
+                    </p>
+                }
+            }
+        </section>
+
+        <section class="step">
+            <span class="step-no">02</span>
+            <a class="step-help" href="@MethodHref(2)">What is this step?</a>
+            <h2>Existence conditions and domain</h2>
+            @if (r.Conditions.Count == 0)
+            {
+                <p>No restrictions: every operation in the expression is defined for all real numbers.</p>
+            }
+            else
+            {
+                <p>Each part of the expression imposes a condition:</p>
+                <ul class="conds">
+                    @foreach (var c in r.Conditions)
+                    {
+                        <li class="expr">@c.Text</li>
+                    }
+                </ul>
+                <p>Solving them together and keeping the overlap:</p>
+            }
+            <p class="result expr">D = @r.DomainText</p>
+        </section>
+
+        <section class="step">
+            <span class="step-no">03</span>
+            <a class="step-help" href="@MethodHref(3)">What is this step?</a>
+            <h2>Symmetry and periodicity</h2>
+            <p>
+                @(r.Symmetry switch
+                {
+                    Symmetry.Even => "f(\u2212x) = f(x) on the domain, so the function is even and the graph is symmetric about the y-axis.",
+                    Symmetry.Odd => "f(\u2212x) = \u2212f(x) on the domain, so the function is odd and the graph is symmetric about the origin.",
+                    _ => "f(\u2212x) matches neither f(x) nor \u2212f(x), so there is no symmetry about the y-axis or the origin."
+                })
+            </p>
+            @if (r.Period is double p)
+            {
+                <p class="result expr">Period T = @Numeric.Pretty(p) &#8212; studying one period is enough.</p>
+            }
+        </section>
+
+        <section class="step">
+            <span class="step-no">04</span>
+            <a class="step-help" href="@MethodHref(4)">What is this step?</a>
+            <h2>Intercepts</h2>
+            <p>
+                @if (r.YIntercept is double y0)
+                {
+                    <span class="expr">f(0) = @Numeric.Pretty(y0)</span>
+                    <span> &#8212; the graph crosses the y-axis at (0, @Numeric.Pretty(y0)).</span>
+                }
+                else
+                {
+                    <span>0 is not in the domain, so there is no y-intercept.</span>
+                }
+            </p>
+            <p>
+                @if (r.XIntercepts.Count == 0)
+                {
+                    <span>f(x) = 0 has no solution in the domain, so the curve never meets the x-axis.</span>
+                }
+                else
+                {
+                    <span>Solving f(x) = 0 gives </span>
+                    <span class="expr">x = @string.Join(", ", r.XIntercepts.Select(Numeric.Pretty))</span>
+                }
+            </p>
+        </section>
+
+        <section class="step">
+            <span class="step-no">05</span>
+            <a class="step-help" href="@MethodHref(5)">What is this step?</a>
+            <h2>Sign of f(x)</h2>
+            <p>Where the curve sits above or below the x-axis:</p>
+            <table class="chart">
+                <tbody>
+                @foreach (var piece in r.SignChart)
+                {
+                    <tr>
+                        <td class="expr">@piece.Where</td>
+                        <td class="sign @(piece.Sign > 0 ? "pos" : piece.Sign < 0 ? "neg" : "zero")">
+                            @(piece.Sign > 0 ? "f(x) > 0 \u2014 above the axis"
+                              : piece.Sign < 0 ? "f(x) < 0 \u2014 below the axis"
+                              : "f(x) = 0")
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="step">
+            <span class="step-no">06</span>
+            <a class="step-help" href="@MethodHref(6)">What is this step?</a>
+            <h2>Limits at the edges of the domain</h2>
+            <ul class="limits">
+                @if (r.ReachesMinusInfinity)
+                {
+                    <li class="expr">lim<sub>x&#8594;&#8722;&#8734;</sub> f(x) = @r.LimitAtMinusInfinity</li>
+                }
+                @foreach (var b in r.Limits)
+                {
+                    @if (b.HasLeft)
+                    {
+                        <li class="expr">lim<sub>x&#8594;@(Numeric.Pretty(b.X))&#8315;</sub> f(x) = @b.FromLeft</li>
+                    }
+                    @if (b.HasRight)
+                    {
+                        <li class="expr">lim<sub>x&#8594;@(Numeric.Pretty(b.X))&#8314;</sub> f(x) = @b.FromRight</li>
+                    }
+                }
+                @if (r.ReachesPlusInfinity)
+                {
+                    <li class="expr">lim<sub>x&#8594;+&#8734;</sub> f(x) = @r.LimitAtPlusInfinity</li>
+                }
+            </ul>
+        </section>
+
+        <section class="step">
+            <span class="step-no">07</span>
+            <a class="step-help" href="@MethodHref(7)">What is this step?</a>
+            <h2>Asymptotes</h2>
+            @if (!Asymptotes.Any())
+            {
+                <p>The limits above are all finite and non-constant, so the curve has no asymptote.</p>
+            }
+            else
+            {
+                <dl class="asyms">
+                    @foreach (var a in Asymptotes)
+                    {
+                        <dt class="expr">@a.Equation<span class="tag">@a.Kind</span></dt>
+                        <dd>@a.Reason</dd>
+                    }
+                </dl>
+            }
+        </section>
+
+        <section class="step">
+            <span class="step-no">08</span>
+            <a class="step-help" href="@MethodHref(8)">What is this step?</a>
+            <h2>First derivative: where it rises and falls</h2>
+            <div class="math-line">
+                <span class="math-label">f&#8242;(x) =</span>
+                @Typeset(r.FPrime)
+            </div>
+            <table class="chart">
+                <tbody>
+                @foreach (var piece in r.Monotonicity)
+                {
+                    <tr>
+                        <td class="expr">@piece.Where</td>
+                        <td class="sign @(piece.Sign > 0 ? "pos" : piece.Sign < 0 ? "neg" : "zero")">
+                            @(piece.Sign > 0 ? "f\u2032 > 0 \u2014 increasing"
+                              : piece.Sign < 0 ? "f\u2032 < 0 \u2014 decreasing"
+                              : "f\u2032 = 0 \u2014 constant")
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            @if (r.Extrema.Count == 0)
+            {
+                <p>The function has no turning point anywhere in the domain.</p>
+            }
+            else
+            {
+                <ul class="points">
+                    @foreach (var e in r.Extrema)
+                    {
+                        <li><span class="expr">(@Numeric.Pretty(e.X), @Numeric.Pretty(e.Y))</span> &#8212; @e.Kind</li>
+                    }
+                </ul>
+            }
+
+            @{
+                var overall = new[]
+                {
+                    Absolute(r.AbsoluteMaximum, maximum: true),
+                    Absolute(r.AbsoluteMinimum, maximum: false),
+                }.Where(line => line is not null).ToList();
+            }
+            @if (overall.Count > 0)
+            {
+                <p>Over the whole domain:</p>
+                <ul class="points">
+                    @foreach (var line in overall)
+                    {
+                        <li>@line</li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="step">
+            <span class="step-no">09</span>
+            <a class="step-help" href="@MethodHref(9)">What is this step?</a>
+            <h2>Second derivative: concavity</h2>
+            <div class="math-line">
+                <span class="math-label">f&#8243;(x) =</span>
+                @Typeset(r.FSecond)
+            </div>
+            <table class="chart">
+                <tbody>
+                @foreach (var piece in r.Concavity)
+                {
+                    <tr>
+                        <td class="expr">@piece.Where</td>
+                        <td class="sign @(piece.Sign > 0 ? "pos" : piece.Sign < 0 ? "neg" : "zero")">
+                            @(piece.Sign > 0 ? "f\u2033 > 0 \u2014 concave up"
+                              : piece.Sign < 0 ? "f\u2033 < 0 \u2014 concave down"
+                              : "f\u2033 = 0")
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+            @if (r.Inflections.Count == 0)
+            {
+                <p>Concavity never changes, so there are no inflection points.</p>
+            }
+            else
+            {
+                <ul class="points">
+                    @foreach (var e in r.Inflections)
+                    {
+                        <li><span class="expr">(@Numeric.Pretty(e.X), @Numeric.Pretty(e.Y))</span> &#8212; inflection point</li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="step">
+            <span class="step-no">10</span>
+            <a class="step-help" href="@MethodHref(10)">What is this step?</a>
+            <h2>The graph</h2>
+            <FunctionPlot Report="r" />
+        </section>
+
+    </article>
+}
+
+@code {
+    static readonly string[] Samples =
+    {
+        "(x^2 - 1)/(x - 2)",
+        "x^3 - 3x",
+        "x*exp(-x)",
+        "ln(x^2 - 4)",
+        "(x^2 + 1)/x",
+        "sqrt(4 - x^2)",
+        "sin(x)/x"
+    };
+
+    [Inject] public IStudyHistory History { get; set; } = default!;
+
+    /// <summary>Route the step explanations live under. The host owns routing, so it supplies this.</summary>
+    [Parameter] public string MethodBaseHref { get; set; } = "/method";
+
+    string _input = "(x^2 - 1)/(x - 2)";
+    StudyReport? _report;
+    string? _error;
+    IReadOnlyList<string> _recent = Array.Empty<string>();
+
+    IEnumerable<Asymptote> Asymptotes =>
+        _report is null
+            ? Enumerable.Empty<Asymptote>()
+            : _report.Asymptotes.GroupBy(a => a.Equation).Select(g => g.First());
+
+    /// <summary>The browser lays the markup out itself — no script, no library, no interop.</summary>
+    static MarkupString Typeset(Expr e) => (MarkupString)MathMl.Render(e);
+
+    /// <summary>Link to the explanation of step <paramref name="number"/>, looked up by number so
+    /// the slugs live in one place.</summary>
+    string MethodHref(int number) =>
+        MethodGuide.Steps.FirstOrDefault(s => s.Number == number) is { } step
+            ? $"{MethodBaseHref}/{step.Slug}"
+            : MethodBaseHref;
+
+    /// <summary>
+    /// One sentence about the largest or smallest value, or null when nothing can be claimed —
+    /// which happens when a limit does not exist, and is better left unsaid than guessed at.
+    /// </summary>
+    static string? Absolute(Extreme? e, bool maximum)
+    {
+        if (e is null) return null;
+
+        string what = maximum ? "maximum" : "minimum";
+        return e.Kind switch
+        {
+            ExtremeKind.Attained =>
+                $"Absolute {what}: f(x) = {Numeric.Pretty(e.Value)}, reached at x = {Where(e.At)}.",
+            ExtremeKind.Approached =>
+                $"No absolute {what}: the values close in on {Numeric.Pretty(e.Value)} without ever reaching it.",
+            ExtremeKind.Unbounded =>
+                $"No absolute {what}: the function is unbounded {(maximum ? "above" : "below")}.",
+            _ => null,
+        };
+    }
+
+    static string Where(IReadOnlyList<double> xs) =>
+        xs.Count <= 4
+            ? string.Join(", ", xs.Select(Numeric.Pretty))
+            : string.Join(", ", xs.Take(4).Select(Numeric.Pretty)) + ", …";
+
+    protected override void OnInitialized() => Analyse();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Browser storage is unreachable while the server prerenders, so the list is read once
+        // the component is live on the client.
+        if (!firstRender) return;
+        _recent = await History.RecentAsync();
+        if (_recent.Count > 0) StateHasChanged();
+    }
+
+    async Task Load(string s) { _input = s; await Run(); }
+
+    async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Run();
+    }
+
+    async Task Run()
+    {
+        Analyse();
+        if (_report is null) return;
+
+        await History.RecordAsync(_input);
+        _recent = await History.RecentAsync();
+    }
+
+    void Analyse()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_input)) { _report = null; return; }
+        try
+        {
+            _report = FunctionAnalyzer.Analyze(_input);
+            if (_report.Domain.Count == 0)
+                _error = "No real x satisfies the existence conditions, so the domain is empty.";
+        }
+        catch (Exception ex)
+        {
+            _report = null;
+            _error = ex.Message;
+        }
+    }
+}

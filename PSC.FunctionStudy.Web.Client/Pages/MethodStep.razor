@@ -1,0 +1,11 @@
+@page "/method/{Slug}"
+
+@* Static, like the index. An unknown slug is handled by the view rather than 404ing. *@
+
+<PageTitle>@(MethodGuide.Find(Slug)?.Title ?? "How the study works")</PageTitle>
+
+<MethodStepView Slug="@Slug" />
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+}

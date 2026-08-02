@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="PSC.FunctionStudy.Core/PSC.FunctionStudy.Core.csproj" />
+  <Folder Name="/Other files/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="PSC.FunctionStudy.Core.Tests/PSC.FunctionStudy.Core.Tests.csproj" />
+  <Project Path="PSC.FunctionStudy.UI/PSC.FunctionStudy.UI.csproj" />
+  <Project Path="PSC.FunctionStudy.Web/PSC.FunctionStudy.Web.csproj" />
+  <Project Path="PSC.FunctionStudy.Web.Client/PSC.FunctionStudy.Web.Client.csproj" />
+</Solution>

@@ -1,0 +1,32 @@
+@* Index of the ten steps. No @page — the host owns routing, same as Study. *@
+
+<header class="masthead">
+    <p class="eyebrow">Reference</p>
+    <h1>How the study works</h1>
+    <p class="lede">
+        The app follows the same ten steps you would write out by hand. Each one below explains
+        what is being looked for and how it is worked out, with links to read further.
+    </p>
+    <p><a class="back-link" href="@StudyHref">&#8592; Back to studying a function</a></p>
+</header>
+
+<ol class="method-index">
+    @foreach (var step in MethodGuide.Steps)
+    {
+        <li>
+            <a href="@($"{BaseHref}/{step.Slug}")">
+                <span class="step-no">@step.Number.ToString("00")</span>
+                <strong>@step.Title</strong>
+                <span class="method-question">@step.Question</span>
+            </a>
+        </li>
+    }
+</ol>
+
+@code {
+    /// <summary>Route the per-step pages live under, without a trailing slash.</summary>
+    [Parameter] public string BaseHref { get; set; } = "/method";
+
+    /// <summary>Where "back" goes — the host decides, since it owns the routes.</summary>
+    [Parameter] public string StudyHref { get; set; } = "/";
+}

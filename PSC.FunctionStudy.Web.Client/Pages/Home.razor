@@ -1,0 +1,11 @@
+@page "/"
+@rendermode InteractiveWebAssembly
+
+@* Thin host-specific wrapper. The analysis engine is pure computation with no I/O,
+   so it runs entirely in the browser: no round trip per keystroke, and it works offline.
+   PSC.FunctionStudy.UI stays free of render modes so the same component can be dropped
+   into a MAUI Blazor Hybrid shell unchanged. *@
+
+<PageTitle>Function study</PageTitle>
+
+<Study />
