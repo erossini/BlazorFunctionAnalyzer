@@ -1,0 +1,278 @@
+<div class="plot">
+    <div class="plot-toolbar">
+        <button class="chip" @onclick="() => Zoom(0.7)" aria-label="Zoom in">Zoom in</button>
+        <button class="chip" @onclick="() => Zoom(1.4)" aria-label="Zoom out">Zoom out</button>
+        <button class="chip" @onclick="() => Pan(-0.25)" aria-label="Pan left">&#8592;</button>
+        <button class="chip" @onclick="() => Pan(0.25)" aria-label="Pan right">&#8594;</button>
+        <button class="chip" @onclick="Reset">Reset view</button>
+        <span class="plot-window">x &#8712; [@N(_xMin), @N(_xMax)] &nbsp; y &#8712; [@N(_yMin), @N(_yMax)]</span>
+    </div>
+
+    <svg viewBox="0 0 @W @H" class="plot-svg" role="img" aria-label="@PlotLabel">
+
+        @foreach (var gx in XGrid())
+        {
+            <line x1="@N(Sx(gx))" y1="0" x2="@N(Sx(gx))" y2="@H" class="grid" />
+        }
+        @foreach (var gy in YGrid())
+        {
+            <line x1="0" y1="@N(Sy(gy))" x2="@W" y2="@N(Sy(gy))" class="grid" />
+        }
+
+        @if (_yMin < 0 && _yMax > 0)
+        {
+            <line x1="0" y1="@N(Sy(0))" x2="@W" y2="@N(Sy(0))" class="axis" />
+        }
+        @if (_xMin < 0 && _xMax > 0)
+        {
+            <line x1="@N(Sx(0))" y1="0" x2="@N(Sx(0))" y2="@H" class="axis" />
+        }
+
+        @foreach (var gx in XGrid().Where(v => Math.Abs(v) > 1e-9))
+        {
+            <g>
+                <text x="@N(Sx(gx))" y="@(N(Math.Clamp(Sy(0) + 14, 12, H - 4)))" class="tick">@N(gx)</text>
+            </g>
+        }
+        @foreach (var gy in YGrid().Where(v => Math.Abs(v) > 1e-9))
+        {
+            <g>
+                <text x="@N(Math.Clamp(Sx(0) + 5, 4, W - 30))" y="@N(Sy(gy) - 3)" class="tick">@N(gy)</text>
+            </g>
+        }
+
+        @foreach (var a in Asymptotes())
+        {
+            @if (a.Kind == "vertical")
+            {
+                <line x1="@N(Sx(a.P))" y1="0" x2="@N(Sx(a.P))" y2="@H" class="asym" />
+            }
+            else if (a.Kind == "horizontal")
+            {
+                <line x1="0" y1="@N(Sy(a.Q))" x2="@W" y2="@N(Sy(a.Q))" class="asym" />
+            }
+            else
+            {
+                <line x1="@N(Sx(_xMin))" y1="@N(Sy(a.P * _xMin + a.Q))"
+                      x2="@N(Sx(_xMax))" y2="@N(Sy(a.P * _xMax + a.Q))" class="asym" />
+            }
+        }
+
+        @foreach (var branch in _branches)
+        {
+            <polyline points="@branch" class="curve" />
+        }
+
+        @{
+            var marks = VisibleMarks().ToList();
+            // a periodic function can put dozens of turning points in view; the labels then
+            // overlap into noise, so past a handful show the dots alone
+            var showLabels = marks.Count <= 12;
+        }
+        @foreach (var pt in marks)
+        {
+            <circle cx="@N(Sx(pt.X))" cy="@N(Sy(pt.Y))" r="4" class="mark @pt.Css" />
+            @if (showLabels && pt.Label.Length > 0)
+            {
+                <g>
+                    <text x="@N(Sx(pt.X) + 7)" y="@N(Sy(pt.Y) - 7)" class="mark-label">@pt.Label</text>
+                </g>
+            }
+        }
+    </svg>
+
+    <ul class="legend">
+        <li><span class="swatch curve-swatch"></span>f(x)</li>
+        @if (Asymptotes().Any())
+        {
+            <li><span class="swatch asym-swatch"></span>asymptote</li>
+        }
+        @if (Report is not null && Report.Extrema.Count > 0)
+        {
+            <li><span class="swatch mark-swatch extremum"></span>maximum / minimum</li>
+        }
+        @if (Report is not null && Report.Inflections.Count > 0)
+        {
+            <li><span class="swatch mark-swatch inflection"></span>inflection</li>
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public StudyReport? Report { get; set; }
+
+    const double W = 720, H = 460;
+
+    string PlotLabel => "Graph of f(x) = " + (Report?.Input ?? "the function");
+
+    double _xMin = -10, _xMax = 10, _yMin = -10, _yMax = 10;
+    List<string> _branches = new();
+    string _signature = "";
+
+    record Mark(double X, double Y, string Label, string Css);
+
+    protected override void OnParametersSet()
+    {
+        var sig = Report?.Input ?? "";
+        if (sig != _signature)
+        {
+            _signature = sig;
+            Reset();
+        }
+        else Recompute();
+    }
+
+    void Reset()
+    {
+        var interesting = new List<double>();
+        if (Report is not null)
+        {
+            interesting.AddRange(Report.XIntercepts);
+            interesting.AddRange(Report.Extrema.Select(p => p.X));
+            interesting.AddRange(Report.Inflections.Select(p => p.X));
+            interesting.AddRange(Report.Asymptotes.Where(a => a.Kind == "vertical").Select(a => a.P));
+        }
+        interesting = interesting.Where(Numeric.Finite).ToList();
+
+        if (interesting.Count > 0)
+        {
+            double lo = interesting.Min(), hi = interesting.Max();
+            // 60% padding either side left the interesting span filling under half the width,
+            // which buries the detail on functions whose features run wide
+            double pad = Math.Max(2.5, (hi - lo) * 0.15);
+            _xMin = lo - pad; _xMax = hi + pad;
+        }
+        else { _xMin = -10; _xMax = 10; }
+
+        Recompute();
+    }
+
+    void Zoom(double factor)
+    {
+        double c = 0.5 * (_xMin + _xMax), half = 0.5 * (_xMax - _xMin) * factor;
+        _xMin = c - half; _xMax = c + half;
+        Recompute();
+    }
+
+    void Pan(double fraction)
+    {
+        double shift = (_xMax - _xMin) * fraction;
+        _xMin += shift; _xMax += shift;
+        Recompute();
+    }
+
+    void Recompute()
+    {
+        _branches = new List<string>();
+        if (Report is null || Report.Domain.Count == 0) return;
+
+        var f = Report.F;
+        int n = 1400;
+        double step = (_xMax - _xMin) / n;
+
+        var sample = new List<double>();
+        for (int i = 0; i <= n; i++)
+        {
+            double x = _xMin + i * step;
+            if (!Report.Domain.Any(iv => iv.Contains(x))) continue;
+            double y = Numeric.Safe(f.Eval, x);
+            if (Numeric.Finite(y)) sample.Add(y);
+        }
+
+        if (sample.Count > 0)
+        {
+            sample.Sort();
+            double fullLo = sample[0], fullHi = sample[^1];
+            double coreLo = sample[(int)(sample.Count * 0.03)];
+            double coreHi = sample[(int)Math.Min(sample.Count - 1, sample.Count * 0.97)];
+
+            // Trimming to the middle 94% keeps one pole from flattening everything else, but it
+            // also throws away a genuine peak — sin(x)/x decays, so its maximum of 1 sits in the
+            // discarded top 3%. Only trim when the tails really are far out, which is what a pole
+            // looks like; otherwise show the curve whole.
+            double core = Math.Max(coreHi - coreLo, 1e-12);
+            bool blowsUp = fullHi - fullLo > core * 8;
+            double lo = blowsUp ? coreLo : fullLo;
+            double hi = blowsUp ? coreHi : fullHi;
+
+            foreach (var a in Asymptotes().Where(a => a.Kind == "horizontal"))
+            { lo = Math.Min(lo, a.Q); hi = Math.Max(hi, a.Q); }
+            foreach (var p in VisibleMarks()) { lo = Math.Min(lo, p.Y); hi = Math.Max(hi, p.Y); }
+
+            if (hi - lo < 1e-6) { lo -= 1; hi += 1; }
+            double pad = (hi - lo) * 0.15;
+            _yMin = lo - pad; _yMax = hi + pad;
+        }
+        else { _yMin = -10; _yMax = 10; }
+
+        // build the curve, cutting it wherever the function leaves the domain or jumps a pole
+        var current = new List<string>();
+        double? prevY = null;
+        double jumpLimit = (_yMax - _yMin) * 0.45;
+
+        for (int i = 0; i <= n; i++)
+        {
+            double x = _xMin + i * step;
+            bool inDomain = Report.Domain.Any(iv => iv.Contains(x));
+            double y = inDomain ? Numeric.Safe(f.Eval, x) : double.NaN;
+
+            bool usable = inDomain && Numeric.Finite(y) && y > _yMin - 4 * (_yMax - _yMin) && y < _yMax + 4 * (_yMax - _yMin);
+            bool jumped = prevY.HasValue && Math.Abs(y - prevY.Value) > jumpLimit;
+
+            if (!usable || jumped)
+            {
+                Flush(current);
+                current = new List<string>();
+                prevY = null;
+                if (!usable) continue;
+            }
+
+            current.Add($"{N(Sx(x))},{N(Sy(y))}");
+            prevY = y;
+        }
+        Flush(current);
+    }
+
+    void Flush(List<string> pts)
+    {
+        if (pts.Count > 1) _branches.Add(string.Join(" ", pts));
+    }
+
+    IEnumerable<Asymptote> Asymptotes() =>
+        Report is null
+            ? Enumerable.Empty<Asymptote>()
+            : Report.Asymptotes.GroupBy(a => a.Equation).Select(g => g.First());
+
+    IEnumerable<Mark> Marks()
+    {
+        if (Report is null) yield break;
+        foreach (var p in Report.Extrema.Where(p => Numeric.Finite(p.Y)))
+            yield return new Mark(p.X, p.Y,
+                p.Kind.Contains("maximum") ? "max" : p.Kind.Contains("minimum") ? "min" : "",
+                "extremum");
+        foreach (var p in Report.Inflections.Where(p => Numeric.Finite(p.Y)))
+            yield return new Mark(p.X, p.Y, "infl.", "inflection");
+    }
+
+    IEnumerable<Mark> VisibleMarks() => Marks().Where(p => p.X >= _xMin && p.X <= _xMax);
+
+    IEnumerable<double> XGrid() => Ticks(_xMin, _xMax);
+    IEnumerable<double> YGrid() => Ticks(_yMin, _yMax);
+
+    static IEnumerable<double> Ticks(double lo, double hi)
+    {
+        double span = hi - lo;
+        if (span <= 0 || double.IsNaN(span)) yield break;
+        double raw = span / 10;
+        double mag = Math.Pow(10, Math.Floor(Math.Log10(raw)));
+        double stepSize = raw / mag < 1.5 ? mag : raw / mag < 3.5 ? 2 * mag : raw / mag < 7.5 ? 5 * mag : 10 * mag;
+        double start = Math.Ceiling(lo / stepSize) * stepSize;
+        for (double v = start; v <= hi; v += stepSize) yield return Math.Abs(v) < stepSize / 1000 ? 0 : v;
+    }
+
+    double Sx(double x) => (x - _xMin) / (_xMax - _xMin) * W;
+    double Sy(double y) => H - (y - _yMin) / (_yMax - _yMin) * H;
+
+    static string N(double v) =>
+        double.IsNaN(v) || double.IsInfinity(v) ? "0" : v.ToString("0.###", CultureInfo.InvariantCulture);
+}
