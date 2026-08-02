@@ -53,6 +53,11 @@ carrying `@page "/"` and `@rendermode InteractiveWebAssembly` around `<Study />`
 Keep it that way. A `@rendermode` inside the RCL would break the MAUI Blazor Hybrid host, which has
 no render modes at all. Any future host adds its own wrapper page.
 
+The `/method` guide pages follow the same split but carry **no** `@rendermode` at all: they are
+static reference content, so they cost nothing to serve and need no WebAssembly download to read.
+Routes the RCL links to are passed in as parameters (`MethodBaseHref`, `StudyHref`) rather than
+hardcoded, since the host owns routing.
+
 WebAssembly is the right mode here because the engine is pure computation with no I/O: it runs in the
 browser with no round trip and works offline. `Program.cs` still registers the interactive Server mode
 too, so switching a page to `InteractiveAuto` needs no host changes. `ReconnectModal` is inert while
@@ -141,6 +146,13 @@ sampled on `[-40, 40]`. Raising it makes analysis slower roughly linearly.
   into separate branches wherever x leaves the domain or y jumps more than 45% of the window (poles).
   It re-fits the view only when `Report.Input` changes, so zoom/pan survive re-renders. `N()` formats
   every coordinate with `InvariantCulture` — required, or a comma decimal separator corrupts the SVG.
+- **`UI/MethodGuide.cs`** — the reference content behind `/method`: one `MethodStep` per step of the
+  study, with what the app does, why it matters, and vetted further reading. Content rather than
+  computation, so it sits in the shared UI layer rather than Core. **Every URL in it was checked to
+  resolve before being added** — do the same for any you add; a dead link in a teaching tool is
+  worse than no link. `MethodIndexView`/`MethodStepView` render it, and `Study.razor` links each of
+  its ten steps to the matching page via `MethodHref(n)`, which looks the slug up by number so the
+  slugs live in exactly one place.
 - **`UI/IStudyHistory.cs`** — the recent-functions contract plus `NullStudyHistory`. Per-device
   today; the interface is what lets a server-backed, per-account history replace it later.
 - **`UI/wwwroot/app.css`** — the whole stylesheet, served to hosts from

@@ -3,7 +3,8 @@
     <h1>Study a function</h1>
     <p class="lede">
         Type a function of <em>x</em>. The app works through the same ten steps you would
-        write out by hand, then draws the curve from what it found.
+        write out by hand, then draws the curve from what it found &#8212;
+        <a href="@MethodBaseHref">see what each step is looking for</a>.
     </p>
 </header>
 
@@ -46,6 +47,7 @@
 
         <section class="step">
             <span class="step-no">01</span>
+            <a class="step-help" href="@MethodHref(1)">What is this step?</a>
             <h2>The function</h2>
             <div class="math-line">
                 <span class="math-label">f(x) =</span>
@@ -66,6 +68,7 @@
 
         <section class="step">
             <span class="step-no">02</span>
+            <a class="step-help" href="@MethodHref(2)">What is this step?</a>
             <h2>Existence conditions and domain</h2>
             @if (r.Conditions.Count == 0)
             {
@@ -87,6 +90,7 @@
 
         <section class="step">
             <span class="step-no">03</span>
+            <a class="step-help" href="@MethodHref(3)">What is this step?</a>
             <h2>Symmetry and periodicity</h2>
             <p>
                 @(r.Symmetry switch
@@ -104,6 +108,7 @@
 
         <section class="step">
             <span class="step-no">04</span>
+            <a class="step-help" href="@MethodHref(4)">What is this step?</a>
             <h2>Intercepts</h2>
             <p>
                 @if (r.YIntercept is double y0)
@@ -131,6 +136,7 @@
 
         <section class="step">
             <span class="step-no">05</span>
+            <a class="step-help" href="@MethodHref(5)">What is this step?</a>
             <h2>Sign of f(x)</h2>
             <p>Where the curve sits above or below the x-axis:</p>
             <table class="chart">
@@ -152,6 +158,7 @@
 
         <section class="step">
             <span class="step-no">06</span>
+            <a class="step-help" href="@MethodHref(6)">What is this step?</a>
             <h2>Limits at the edges of the domain</h2>
             <ul class="limits">
                 @if (r.ReachesMinusInfinity)
@@ -178,6 +185,7 @@
 
         <section class="step">
             <span class="step-no">07</span>
+            <a class="step-help" href="@MethodHref(7)">What is this step?</a>
             <h2>Asymptotes</h2>
             @if (!Asymptotes.Any())
             {
@@ -197,6 +205,7 @@
 
         <section class="step">
             <span class="step-no">08</span>
+            <a class="step-help" href="@MethodHref(8)">What is this step?</a>
             <h2>First derivative: where it rises and falls</h2>
             <div class="math-line">
                 <span class="math-label">f&#8242;(x) =</span>
@@ -252,6 +261,7 @@
 
         <section class="step">
             <span class="step-no">09</span>
+            <a class="step-help" href="@MethodHref(9)">What is this step?</a>
             <h2>Second derivative: concavity</h2>
             <div class="math-line">
                 <span class="math-label">f&#8243;(x) =</span>
@@ -289,6 +299,7 @@
 
         <section class="step">
             <span class="step-no">10</span>
+            <a class="step-help" href="@MethodHref(10)">What is this step?</a>
             <h2>The graph</h2>
             <FunctionPlot Report="r" />
         </section>
@@ -310,6 +321,9 @@
 
     [Inject] public IStudyHistory History { get; set; } = default!;
 
+    /// <summary>Route the step explanations live under. The host owns routing, so it supplies this.</summary>
+    [Parameter] public string MethodBaseHref { get; set; } = "/method";
+
     string _input = "(x^2 - 1)/(x - 2)";
     StudyReport? _report;
     string? _error;
@@ -322,6 +336,13 @@
 
     /// <summary>The browser lays the markup out itself — no script, no library, no interop.</summary>
     static MarkupString Typeset(Expr e) => (MarkupString)MathMl.Render(e);
+
+    /// <summary>Link to the explanation of step <paramref name="number"/>, looked up by number so
+    /// the slugs live in one place.</summary>
+    string MethodHref(int number) =>
+        MethodGuide.Steps.FirstOrDefault(s => s.Number == number) is { } step
+            ? $"{MethodBaseHref}/{step.Slug}"
+            : MethodBaseHref;
 
     /// <summary>
     /// One sentence about the largest or smallest value, or null when nothing can be claimed —

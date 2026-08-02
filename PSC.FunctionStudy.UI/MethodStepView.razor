@@ -1,0 +1,69 @@
+@* One step explained. Renders a not-found notice rather than throwing on an unknown slug. *@
+
+@if (MethodGuide.Find(Slug) is not { } step)
+{
+    <header class="masthead">
+        <p class="eyebrow">Reference</p>
+        <h1>Step not found</h1>
+        <p class="lede">There is no step called &ldquo;@Slug&rdquo;.</p>
+        <p><a class="back-link" href="@BaseHref">&#8592; All ten steps</a></p>
+    </header>
+}
+else
+{
+    var previous = MethodGuide.Steps.FirstOrDefault(s => s.Number == step.Number - 1);
+    var next = MethodGuide.Steps.FirstOrDefault(s => s.Number == step.Number + 1);
+
+    <header class="masthead">
+        <p class="eyebrow">Step @step.Number.ToString("00") of 10</p>
+        <h1>@step.Title</h1>
+        <p class="lede">@step.Question</p>
+        <p><a class="back-link" href="@BaseHref">&#8592; All ten steps</a></p>
+    </header>
+
+    <article class="steps">
+        <section class="step">
+            <h2>What the app does</h2>
+            <p>@step.WhatWeDo</p>
+        </section>
+
+        <section class="step">
+            <h2>Why it matters</h2>
+            <p>@step.WhyItMatters</p>
+        </section>
+
+        <section class="step">
+            <h2>Read further</h2>
+            <ul class="reading">
+                @foreach (var reference in step.Reading)
+                {
+                    <li>
+                        <a href="@reference.Url" target="_blank" rel="noopener noreferrer">@reference.Title</a>
+                        <span class="reading-source">@reference.Source</span>
+                    </li>
+                }
+            </ul>
+        </section>
+    </article>
+
+    <nav class="method-nav" aria-label="Other steps">
+        @if (previous is not null)
+        {
+            <a href="@($"{BaseHref}/{previous.Slug}")">&#8592; @previous.Title</a>
+        }
+        else
+        {
+            <span></span>
+        }
+        @if (next is not null)
+        {
+            <a class="method-next" href="@($"{BaseHref}/{next.Slug}")">@next.Title &#8594;</a>
+        }
+    </nav>
+}
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+
+    [Parameter] public string BaseHref { get; set; } = "/method";
+}
