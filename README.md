@@ -1,1 +1,1 @@
-# BlazorFunctionAnalyzer
+# Blazor Math Function Analyzer
