@@ -7,6 +7,8 @@ monotonicity and concavity, then sketch the curve.
 Type a function and the app works through the same ten steps you would write out by hand, showing
 its reasoning at each one, and finally draws the graph from what it found.
 
+[Demo](https://math.puresourcecode.com/)
+
 <img width="751" height="554" alt="image" src="https://github.com/user-attachments/assets/a2d78d78-6f51-49ee-b83c-366cb8dadef7" />
 
 It is written in the spirit of **Derive** — not a black box that prints an answer, but a tool that
